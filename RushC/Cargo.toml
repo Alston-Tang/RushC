@@ -11,3 +11,13 @@ mongodb = "2.7.0-beta"
 futures = "0.3.28"
 serde = { version = "1.0.188", features = ["derive"] }
 clap = { version = "4.4.3", features = [ "derive" ] }
+http = "0.2.9"
+reqwest = { version = "0.11.20", features = ["json"] }
+
+[[bin]]
+name = "file_records_init_sync"
+path = "src/main.rs"
+
+[[bin]]
+name = "delete_all"
+path = "src/delete_all.rs"
