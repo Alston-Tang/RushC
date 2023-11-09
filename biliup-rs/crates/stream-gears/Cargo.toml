@@ -1,0 +1,29 @@
+[package]
+name = "stream-gears"
+version = "0.1.19"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "stream_gears"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+pyo3 = { version = "0.18.0", features = ["extension-module"] }
+serde = "1"
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tracing-appender = "0.2"
+anyhow = "1.0"
+futures = "0.3.21"
+biliup = { path = "../biliup"}
+time = "0.3"
+
+#[target.'cfg(all(target_arch="aarch64", target_os="linux"))'.dependencies]
+#downloader = { path = "../downloader", default-features = false , features = ["rustls-tls"] }
+#
+#
+#[target.'cfg(not(all(target_arch="aarch64", target_os="linux")))'.dependencies]
+#downloader = { path = "../downloader" }

@@ -3,7 +3,11 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/RushC/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/biliup-rs/crates/biliup/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/biliup-rs/crates/stream-gears/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/biliup-rs/crates/stream-gears/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/RushC/target" />
+      <excludeFolder url="file://$MODULE_DIR$/biliup-rs/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
