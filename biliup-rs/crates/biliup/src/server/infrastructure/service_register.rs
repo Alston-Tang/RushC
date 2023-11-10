@@ -44,14 +44,14 @@ impl ServiceRegister {
         let users_repository =
             Arc::new(SqliteUsersStreamersRepository::new(pool.clone())) as DynUsersRepository;
 
-        let upload_records_repository = Arc::new(SqliteUploadRecordsRepository::new(pool.clone()))
+        let upload_records_repository = Arc::new(SqliteUploadRecordsRepository::new())
             as DynUploadRecordsRepository;
 
         let videos_repository =
-            Arc::new(SqliteVideosRepository::new(pool.clone())) as DynVideosRepository;
+            Arc::new(SqliteVideosRepository::new()) as DynVideosRepository;
 
         let download_records_repository =
-            Arc::new(SqliteDownloadRecordsRepository::new(pool)) as DynDownloadRecordsRepository;
+            Arc::new(SqliteDownloadRecordsRepository::new()) as DynDownloadRecordsRepository;
 
         let streamers_service = Arc::new(ConduitLiveStreamersService::new(
             streamers_repository.clone(),

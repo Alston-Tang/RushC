@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
-use crate::server::core::upload_streamers::DynUploadStreamersRepository;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing::{error, info};
@@ -63,7 +62,7 @@ impl UploadActor {
                         let len = chunk.len();
                         Ok((chunk, len))
                     })
-                }, |counter: Arc<AtomicUsize>|{})
+                }, |_counter: Arc<AtomicUsize>|{})
                 . await?;
             let t = instant.elapsed().as_millis();
             info!(

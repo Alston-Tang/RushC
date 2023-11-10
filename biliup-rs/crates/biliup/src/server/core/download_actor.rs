@@ -1,7 +1,7 @@
 use crate::client::StatelessClient;
 
 use crate::downloader::extractor::{find_extractor, SiteDefinition};
-use crate::downloader::util::{LifecycleFile, Segmentable};
+use crate::downloader::util::{Segmentable};
 use crate::server::core::live_streamers::{DynLiveStreamersService, LiveStreamerDto};
 use crate::server::core::upload_actor::UploadActorHandle;
 use crate::server::core::util::{logging_spawn, AnyMap, Cycle};
@@ -9,7 +9,6 @@ use crate::server::core::StreamStatus;
 
 use indexmap::indexmap;
 
-use crate::server::core::upload_streamers::DynUploadStreamersRepository;
 use std::collections::HashMap;
 use std::error::Error;
 use std::ops::DerefMut;
@@ -189,7 +188,7 @@ impl DownloadActorHandle {
     pub fn get_streamers(&self) -> HashMap<String, StreamStatus> {
         let read_guard = self.platform_map.read().unwrap();
         let mut map = HashMap::new();
-        for (key, val) in read_guard.iter() {
+        for (_key, val) in read_guard.iter() {
             map.extend(val.0.get_all());
         }
         map

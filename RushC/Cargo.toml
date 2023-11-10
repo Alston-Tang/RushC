@@ -20,9 +20,9 @@ serde = "1"
 ftlog = "0.2.10"
 
 [[bin]]
-name = "rush_c"
-path = "src/main.rs"
+name = "upload"
+path = "src/upload.rs"
 
 [[bin]]
-name = "pre_upload"
-path = "src/upload.rs"
+name = "submit"
+path = "src/submit.rs"
