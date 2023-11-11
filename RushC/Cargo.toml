@@ -18,6 +18,7 @@ structopt = "0.3.26"
 mongodb = "2.7.1"
 serde = "1"
 ftlog = "0.2.10"
+serde_json = { version = "1.0.107", features = [] }
 
 [[bin]]
 name = "upload"

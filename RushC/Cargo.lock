@@ -2475,6 +2475,7 @@ dependencies = [
  "mongodb",
  "reqwest",
  "serde",
+ "serde_json",
  "structopt",
  "tokio",
 ]

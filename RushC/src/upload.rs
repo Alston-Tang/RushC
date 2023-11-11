@@ -1,20 +1,20 @@
 mod common;
 
-use anyhow::{Context, Error};
+use anyhow::Error;
 use biliup::client::StatelessClient;
 use common::{AirflowVideoLock, BiliVideoInfo, PollStream};
 use futures::StreamExt;
 use log::info;
-use mongodb::bson::doc;
 use mongodb::{Client, Collection};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
+use crate::common::{check_lock_acquired, get_mongodb_client};
 use biliup::uploader::credential::login_by_cookies;
 use biliup::uploader::{bilibili, line, VideoFile};
 use mongodb::bson::oid::ObjectId;
@@ -53,24 +53,6 @@ struct Opts {
     output_collection: String,
 }
 
-async fn get_mongodb_client(mongodb_uri: &str) -> Client {
-    info!("connecting to mongodb {mongodb_uri}");
-    Client::with_uri_str(mongodb_uri).await.unwrap()
-}
-
-async fn check_lock_acquired(
-    collection: &Collection<AirflowVideoLock>,
-    lock_id: &str,
-    file_obj_id: &str,
-) -> bool {
-    info!("checking if file {file_obj_id} has been locked by {lock_id}");
-    collection
-        .find_one(doc! {"LockId": ObjectId::from_str(lock_id).unwrap(), "DocId": ObjectId::from_str(file_obj_id).unwrap()}, None)
-        .await
-        .unwrap()
-        .is_some()
-}
-
 async fn upload_video(
     file: &Path,
     cookie: &Path,
@@ -96,7 +78,6 @@ async fn upload_video(
     let uploader = line.pre_upload(&bili, file_obj).await.unwrap();
     let client = StatelessClient::default();
     info!("start uploading video file {}", file.display());
-    let mut uploaded_bytes_count = Arc::new(AtomicUsize::new(0));
     let remote_video = uploader
         .upload(
             client,
@@ -109,8 +90,8 @@ async fn upload_video(
                 })
             },
             |counter: Arc<AtomicUsize>| {
-                info!(limit=3000; "{}", counter.load(Relaxed));
-            }
+                info!(limit=3000; "{} bytes uploaded", counter.load(Relaxed));
+            },
         )
         .await
         .unwrap();
@@ -135,6 +116,7 @@ async fn update_bili_video_info(
         title: video.title.clone(),
         filename: video.filename.clone(),
         desc: video.desc.clone(),
+        bvid: None,
     };
     collection.insert_one(video_obj, None).await.unwrap();
 }
