@@ -72,8 +72,8 @@ struct Opts {
     video_output_collection: String,
     #[structopt(long)]
     title: Option<String>,
-    #[structopt(long)]
-    tag: Option<String>,
+    #[structopt(long, default_value = "虚拟UP主,动画,综合,直播录像,七海Nana7mi,七海,虚拟主播,VUP")]
+    tag: String,
     #[structopt(long)]
     cover: Option<PathBuf>,
     #[structopt(use_delimiter = true)]
@@ -110,7 +110,7 @@ async fn build_archive_studio(
     bili: &BiliBili,
     vid: &Option<String>,
     title: &Option<String>,
-    tag: &Option<String>,
+    tag: &str,
 ) -> Studio {
     let studio = match vid {
         Some(vid_str) => {
@@ -131,7 +131,7 @@ async fn build_archive_studio(
             desc_v2: None,
             dynamic: "".to_string(),
             subtitle: Default::default(),
-            tag: "虚拟UP主,动画,综合,直播录像,七海Nana7mi,七海,虚拟主播,VUP".to_string(),
+            tag: tag.to_string(),
             videos: vec![],
             dtime: None,
             open_subtitle: false,
@@ -217,7 +217,7 @@ async fn submit(
     cookie: &Path,
     vid: &Option<String>,
     title: Option<String>,
-    tag: Option<String>,
+    tag: &str,
     cover: Option<PathBuf>,
 ) -> SubmitResponse {
     info!("get user credential from cookie file");
@@ -307,7 +307,7 @@ async fn main() -> Result<(), Error> {
     if !lock_acquired {
         panic!("some locks are not already acquired");
     }
-    let res = submit(&opts.videos, &opts.cookie, &opts.vid, opts.title, opts.tag, opts.cover).await;
+    let res = submit(&opts.videos, &opts.cookie, &opts.vid, opts.title, &opts.tag, opts.cover).await;
     let video_info_collection = client
         .database(&opts.db)
         .collection::<BiliVideoInfo>(&opts.video_output_collection);
