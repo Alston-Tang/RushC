@@ -2,10 +2,11 @@ mod common;
 
 use anyhow::Error;
 use biliup::client::StatelessClient;
-use common::{AirflowVideoLock, BiliVideoInfo, PollStream};
+use common::{BiliVideoInfo, PollStream};
 use futures::StreamExt;
 use log::info;
-use mongodb::{Client, Collection};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::AtomicUsize;
@@ -14,10 +15,8 @@ use std::sync::Arc;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
-use crate::common::{check_lock_acquired, get_mongodb_client};
 use biliup::uploader::credential::login_by_cookies;
 use biliup::uploader::{bilibili, line, VideoFile};
-use mongodb::bson::oid::ObjectId;
 
 // this structure should be consistent to structure defined in biliup-rs
 // biliup-rs/crates/bin/cli.rs
@@ -40,17 +39,7 @@ struct Opts {
     #[structopt(parse(from_os_str), long)]
     cookie: PathBuf,
     #[structopt(long)]
-    lock_id: String,
-    #[structopt(long)]
-    file_obj_id: String,
-    #[structopt(long)]
-    mongodb_uri: String,
-    #[structopt(long, default_value = "airflow")]
-    db: String,
-    #[structopt(long, default_value = "airflow_video_lock")]
-    lock_collection: String,
-    #[structopt(long, default_value = "bili_video_info")]
-    output_collection: String,
+    execution_summary_path: Option<PathBuf>,
 }
 
 async fn upload_video(
@@ -98,55 +87,37 @@ async fn upload_video(
     Some(remote_video)
 }
 
-async fn update_bili_video_info(
-    file_obj_id: &str,
-    video: &bilibili::Video,
-    collection: Collection<BiliVideoInfo>,
-) -> () {
-    info!("updating bili_video_info collection");
+fn gen_execution_summary(video: &bilibili::Video, out_path: PathBuf) -> () {
+    info!("generating execution summary");
     info!(
         "title={}, filename={}, desc={}",
         video.title.clone().unwrap_or(String::new()),
         video.filename,
         video.desc
     );
-    let file_obj_id = ObjectId::from_str(file_obj_id).unwrap();
     let video_obj = BiliVideoInfo {
-        doc_id: file_obj_id,
         title: video.title.clone(),
         filename: video.filename.clone(),
         desc: video.desc.clone(),
-        bvid: None,
     };
-    collection.insert_one(video_obj, None).await.unwrap();
+    let out_file = File::create(out_path).unwrap();
+    let mut writer = BufWriter::new(out_file);
+    serde_json::to_writer(&mut writer, &video_obj).unwrap();
+    writer.flush().unwrap();
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     ftlog::builder().try_init().unwrap();
     let opts = Opts::from_args();
-    let client = get_mongodb_client(&opts.mongodb_uri).await;
     let file_path = opts.file;
-    let lock_id = opts.lock_id;
-    let file_obj_id = opts.file_obj_id;
     let cookie_path = opts.cookie;
-    let video_lock_collection = client
-        .database(&opts.db)
-        .collection::<AirflowVideoLock>(&opts.lock_collection);
-    if !check_lock_acquired(&video_lock_collection, &lock_id, &file_obj_id).await {
-        panic!("lock for video {}({file_obj_id}) expected to already acquire lock {lock_id} but actually not.", file_path.display());
-    }
     let remote_video = upload_video(&file_path, &cookie_path, opts.line, opts.limit as usize)
         .await
         .unwrap();
-    update_bili_video_info(
-        &file_obj_id,
-        &remote_video,
-        client
-            .database(&opts.db)
-            .collection::<BiliVideoInfo>(&opts.output_collection),
-    )
-    .await;
+    if opts.execution_summary_path.is_some() {
+        gen_execution_summary(&remote_video, opts.execution_summary_path.unwrap());
+    }
     info!(
         "file {} has been uploaded to remote as {}",
         file_path.display(),

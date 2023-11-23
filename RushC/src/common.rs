@@ -36,11 +36,9 @@ pub struct AirflowArchiveLock {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct BiliVideoInfo {
-    pub doc_id: ObjectId,
     pub title: Option<String>,
     pub filename: String,
     pub desc: String,
-    pub bvid: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
