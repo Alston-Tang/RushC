@@ -47,8 +47,6 @@ struct Opts {
     vid: Option<String>,
     #[structopt(parse(from_os_str), long)]
     cookie: PathBuf,
-    #[structopt(long, default_value = "airflow")]
-    db: String,
     #[structopt(long)]
     title: Option<String>,
     #[structopt(long, default_value = "虚拟UP主,动画,综合,直播录像,七海Nana7mi,七海,虚拟主播,VUP")]
