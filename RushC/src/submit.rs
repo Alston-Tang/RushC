@@ -210,9 +210,9 @@ fn gen_execution_summary(result: SubmitResponse, out_path: PathBuf) -> () {
         result.aid,
         result.bvid
     );
-    let summary = serde_json::to_string(&result);
     let out_file = File::create(out_path).unwrap();
     let mut writer = BufWriter::new(out_file);
+    serde_json::to_writer(&mut writer, &result).unwrap();
     writer.flush().unwrap();
 }
 
