@@ -21,14 +21,20 @@ use structopt::StructOpt;
 
 pub struct VideoInfo {
     pub path: String,
+    pub video_title: String,
 }
 
 impl FromStr for VideoInfo {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let video_info_split = value.split(":").collect::<Vec<&str>>();
+        if video_info_split.len() != 2 {
+            panic!("video info should be a [path:title] string but got {value}");
+        }
         Ok(VideoInfo {
-            path: value.to_string(),
+            path: video_info_split[0].to_string(),
+            video_title: video_info_split[1].to_string(),
         })
     }
 }
@@ -37,6 +43,7 @@ impl fmt::Debug for VideoInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("VideoInfo")
             .field("path", &self.path)
+            .field("video_title", &self.video_title)
             .finish()
     }
 }
@@ -76,7 +83,7 @@ async fn build_archive_studio(
         None => Studio {
             copyright: 2,
             source: "https://live.bilibili.com/21452505".to_string(),
-            tid: 47,
+            tid: 27,
             cover: "".to_string(),
             title: title.clone().unwrap_or("".to_string()),
             desc_format_id: 0,
@@ -113,7 +120,7 @@ pub async fn construct_videos_list(videos: &Vec<VideoInfo>) -> Vec<Video> {
     videos
         .iter()
         .map(|video| Video {
-            title: None,
+            title: Some(video.video_title.clone()),
             filename: video.path.clone(),
             desc: "".to_string(),
         })
