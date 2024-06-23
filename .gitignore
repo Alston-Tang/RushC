@@ -4,3 +4,4 @@ ignore
 .DS_Store
 *.flv
 *.jpg
+.idea
