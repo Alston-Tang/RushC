@@ -13,12 +13,13 @@ bytes = "1.5.0"
 indicatif = "0.17.7"
 anyhow = "1.0.75"
 futures = "0.3.28"
-reqwest = "0.11.22"
+reqwest = { version = "0.12.5", features = ["stream"] }
 structopt = "0.3.26"
 mongodb = "2.7.1"
 serde = "1"
-ftlog = "0.2.10"
 serde_json = { version = "1.0.107", features = [] }
+tracing = "0.1.39"
+tracing-subscriber = "0.3.17"
 
 [[bin]]
 name = "upload"

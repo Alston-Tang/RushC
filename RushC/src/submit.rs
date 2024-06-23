@@ -1,23 +1,14 @@
-mod common;
-
-use crate::common::{
-    AirflowArchiveLock, AirflowVideoLock, BiliArchiveInfo, BiliVideoInfo,
-};
 use anyhow::Error;
 use biliup::uploader::bilibili::{BiliBili, ResponseData, Studio, Vid, Video};
 use biliup::uploader::credential::login_by_cookies;
-use common::check_lock_acquired;
-use log::{error, info};
-use mongodb::bson::doc;
-use mongodb::bson::oid::ObjectId;
-use mongodb::Collection;
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+use tracing::info;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub struct VideoInfo {
     pub path: String,
@@ -56,14 +47,18 @@ struct Opts {
     cookie: PathBuf,
     #[structopt(long)]
     title: Option<String>,
-    #[structopt(long, default_value = "虚拟UP主,动画,综合,直播录像,七海Nana7mi,七海,虚拟主播,VUP")]
+    #[structopt(long)]
     tag: String,
     #[structopt(long)]
     cover: Option<PathBuf>,
+    #[structopt(long)]
+    source: Option<String>,
+    #[structopt(long)]
+    desc: String,
+    #[structopt(long)]
+    tid: u16,
     #[structopt(use_delimiter = true)]
     videos: Vec<VideoInfo>,
-    #[structopt(long)]
-    execution_summary_path: Option<PathBuf>,
 }
 
 async fn build_archive_studio(
@@ -71,7 +66,14 @@ async fn build_archive_studio(
     vid: &Option<String>,
     title: &Option<String>,
     tag: &str,
+    source: &Option<String>,
+    desc: &String,
+    tid: u16,
 ) -> Studio {
+    let copyright = match source {
+        Some(_) => 2,
+        None => 1,
+    };
     let studio = match vid {
         Some(vid_str) => {
             let mut exist_studio = bili.studio_data(&Vid::Bvid(vid_str.clone())).await.unwrap();
@@ -81,13 +83,13 @@ async fn build_archive_studio(
             exist_studio
         }
         None => Studio {
-            copyright: 2,
-            source: "https://live.bilibili.com/21452505".to_string(),
-            tid: 27,
+            copyright,
+            source: source.clone().unwrap_or(String::new()),
+            tid: tid,
             cover: "".to_string(),
             title: title.clone().unwrap_or("".to_string()),
             desc_format_id: 0,
-            desc: "七海Nana7mi：https://space.bilibili.com/434334701".to_string(),
+            desc: desc.clone(),
             desc_v2: None,
             dynamic: "".to_string(),
             subtitle: Default::default(),
@@ -180,6 +182,9 @@ async fn submit(
     title: Option<String>,
     tag: &str,
     cover: Option<PathBuf>,
+    source: Option<String>,
+    desc: String,
+    tid: u16,
 ) -> SubmitResponse {
     info!("get user credential from cookie file");
     let bili = login_by_cookies(cookie).await.unwrap();
@@ -189,7 +194,12 @@ async fn submit(
             .as_str()
             .unwrap()
     );
-    let mut studio = build_archive_studio(&bili, &vid, &title, &tag).await;
+    for (idx, video) in videos.iter().enumerate() {
+        info!("video {}:", idx);
+        info!("title= {}", video.video_title);
+        info!("path= {}", video.path);
+    }
+    let mut studio = build_archive_studio(&bili, &vid, &title, &tag, &source, &desc, tid).await;
     if cover.is_some() {
         cover_up(&mut studio, &bili, cover.unwrap()).await;
     }
@@ -208,28 +218,23 @@ async fn submit(
     }
 }
 
-
-
-fn gen_execution_summary(result: SubmitResponse, out_path: PathBuf) -> () {
-    info!("generating execution summary");
-    info!(
-        "aid={}, bvid={}",
-        result.aid,
-        result.bvid
-    );
-    let out_file = File::create(out_path).unwrap();
-    let mut writer = BufWriter::new(out_file);
-    serde_json::to_writer(&mut writer, &result).unwrap();
-    writer.flush().unwrap();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    ftlog::builder().try_init().unwrap();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     let opts = Opts::from_args();
-    let res = submit(&opts.videos, &opts.cookie, &opts.vid, opts.title, &opts.tag, opts.cover).await;
-    if opts.execution_summary_path.is_some() {
-        gen_execution_summary(res, opts.execution_summary_path.unwrap());
-    }
+    submit(
+        &opts.videos,
+        &opts.cookie,
+        &opts.vid,
+        opts.title,
+        &opts.tag,
+        opts.cover,
+        opts.source,
+        opts.desc,
+        opts.tid,
+    )
+    .await;
     Ok(())
 }

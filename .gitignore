@@ -1,5 +1,6 @@
 RushC/target
 RushC/cookies.json
+ignore
 .DS_Store
 *.flv
 *.jpg

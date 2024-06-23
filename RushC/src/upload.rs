@@ -1,22 +1,16 @@
-mod common;
-
 use anyhow::Error;
 use biliup::client::StatelessClient;
-use common::{BiliVideoInfo, PollStream};
 use futures::StreamExt;
-use log::info;
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::Arc;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
+use tracing::info;
 
 use biliup::uploader::credential::login_by_cookies;
 use biliup::uploader::{bilibili, line, VideoFile};
+use tracing_subscriber::fmt;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 // this structure should be consistent to structure defined in biliup-rs
 // biliup-rs/crates/bin/cli.rs
@@ -38,8 +32,6 @@ struct Opts {
     limit: u32,
     #[structopt(parse(from_os_str), long)]
     cookie: PathBuf,
-    #[structopt(long)]
-    execution_summary_path: Option<PathBuf>,
 }
 
 async fn upload_video(
@@ -63,61 +55,38 @@ async fn upload_video(
     info!("using upload line {:?}", line);
     info!("opening video file {}", file.display());
     let file_obj: VideoFile = VideoFile::new(file).unwrap();
+
+    let file_size = file_obj.file.metadata().unwrap().len();
+    let mut uploaded_size: i64 = 0;
+
     info!("pre-uploading video file {}", file.display());
     let uploader = line.pre_upload(&bili, file_obj).await.unwrap();
     let client = StatelessClient::default();
     info!("start uploading video file {}", file.display());
     let remote_video = uploader
-        .upload(
-            client,
-            limit,
-            |vs| {
-                vs.map(|chunk| {
-                    let chunk = chunk?;
-                    let len = chunk.len();
-                    Ok((PollStream::new(chunk), len))
-                })
-            },
-            |counter: Arc<AtomicUsize>| {
-                info!(limit=3000; "{} bytes uploaded", counter.load(Relaxed));
-            },
-        )
+        .upload(client, limit, |vs| {
+            vs.map(|chunk| {
+                info!("{} bytes out of {} bytes have been uploaded", uploaded_size, file_size);
+                let chunk = chunk?;
+                let len = chunk.len();
+                uploaded_size += len as i64;
+                Ok((chunk, len))
+            })
+        })
         .await
         .unwrap();
     Some(remote_video)
 }
 
-fn gen_execution_summary(video: &bilibili::Video, out_path: PathBuf) -> () {
-    info!("generating execution summary");
-    info!(
-        "title={}, filename={}, desc={}",
-        video.title.clone().unwrap_or(String::new()),
-        video.filename,
-        video.desc
-    );
-    let video_obj = BiliVideoInfo {
-        title: video.title.clone(),
-        filename: video.filename.clone(),
-        desc: video.desc.clone(),
-    };
-    let out_file = File::create(out_path).unwrap();
-    let mut writer = BufWriter::new(out_file);
-    serde_json::to_writer(&mut writer, &video_obj).unwrap();
-    writer.flush().unwrap();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    ftlog::builder().try_init().unwrap();
+    tracing_subscriber::registry().with(fmt::layer()).init();
     let opts = Opts::from_args();
     let file_path = opts.file;
     let cookie_path = opts.cookie;
     let remote_video = upload_video(&file_path, &cookie_path, opts.line, opts.limit as usize)
         .await
         .unwrap();
-    if opts.execution_summary_path.is_some() {
-        gen_execution_summary(&remote_video, opts.execution_summary_path.unwrap());
-    }
     info!(
         "file {} has been uploaded to remote as {}",
         file_path.display(),
