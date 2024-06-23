@@ -1,37 +1,42 @@
 use anyhow::Error;
 use biliup::client::StatelessClient;
 use futures::StreamExt;
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
-use structopt::clap::arg_enum;
 use structopt::StructOpt;
 use tracing::info;
 
 use biliup::uploader::credential::login_by_cookies;
 use biliup::uploader::{bilibili, line, VideoFile};
+use serde::{Deserialize, Serialize};
 use tracing_subscriber::fmt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 // this structure should be consistent to structure defined in biliup-rs
 // biliup-rs/crates/bin/cli.rs
-arg_enum! {
-    #[derive(Debug)]
-    enum Line {
-        Qn,
-        Bda2,
-    }
+
+#[derive(Serialize, Deserialize)]
+enum Line {
+    Qn,
+    Bda2,
+}
+
+#[derive(Serialize, Deserialize)]
+struct UploadConfig {
+    file: PathBuf,
+    line: Line,
+    limit: u32,
+    cookie: PathBuf,
 }
 
 #[derive(Debug, StructOpt)]
 struct Opts {
-    #[structopt(parse(from_os_str))]
-    file: PathBuf,
-    #[structopt(long, possible_values=&Line::variants(), case_insensitive=false, default_value="Qn")]
-    line: Line,
-    #[structopt(long, default_value = "10")]
-    limit: u32,
     #[structopt(parse(from_os_str), long)]
-    cookie: PathBuf,
+    config: PathBuf,
+    #[structopt(parse(from_os_str), long)]
+    out: Option<PathBuf>,
 }
 
 async fn upload_video(
@@ -66,7 +71,10 @@ async fn upload_video(
     let remote_video = uploader
         .upload(client, limit, |vs| {
             vs.map(|chunk| {
-                info!("{} bytes out of {} bytes have been uploaded", uploaded_size, file_size);
+                info!(
+                    "{} bytes out of {} bytes have been uploaded",
+                    uploaded_size, file_size
+                );
                 let chunk = chunk?;
                 let len = chunk.len();
                 uploaded_size += len as i64;
@@ -82,16 +90,37 @@ async fn upload_video(
 async fn main() -> Result<(), Error> {
     tracing_subscriber::registry().with(fmt::layer()).init();
     let opts = Opts::from_args();
-    let file_path = opts.file;
-    let cookie_path = opts.cookie;
-    let remote_video = upload_video(&file_path, &cookie_path, opts.line, opts.limit as usize)
-        .await
-        .unwrap();
+
+    info!("using config {}", opts.config.display());
+    let config_file = File::open(opts.config)?;
+    let reader = BufReader::new(config_file);
+
+    let config: UploadConfig = serde_json::from_reader(reader)?;
+    info!("{}", serde_json::to_string(&config).unwrap());
+
+
+    let remote_video = upload_video(
+        &config.file,
+        &config.cookie,
+        config.line,
+        config.limit as usize,
+    )
+    .await
+    .unwrap();
     info!(
         "file {} has been uploaded to remote as {}",
-        file_path.display(),
+        config.file.display(),
         remote_video.filename
     );
-    log::logger().flush();
+
+    match opts.out {
+        Some(path) => {
+            let file = OpenOptions::new().write(true).create(true).open(path)?;
+            let writer = BufWriter::new(file);
+            serde_json::to_writer_pretty(writer, &remote_video)?;
+        },
+        None => {},
+    }
+
     Result::Ok(())
 }
