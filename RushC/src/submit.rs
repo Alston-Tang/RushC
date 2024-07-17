@@ -22,7 +22,7 @@ struct SubmitConfig {
     vid: Option<String>,
     cookie: PathBuf,
     title: Option<String>,
-    tag: Vec<String>,
+    tag: Option<Vec<String>>,
     cover: Option<PathBuf>,
     source: Option<String>,
     desc: Option<String>,
@@ -102,16 +102,19 @@ async fn build_archive_studio(
         Some(_) => 2,
         None => 1,
     };
-    studio.source = config.source.clone().unwrap_or(String::new());
+    studio.source = config.source.clone().unwrap_or(studio.source);
     // 动画-综合 = 27
-    studio.tid = config.tid.unwrap_or(27);
+    studio.tid = config.tid.unwrap_or(studio.tid);
     studio.cover = match &config.cover {
         Some(path) => cover_up(&bili, path.clone()).await,
-        None => String::new()
+        None => studio.cover
     };
-    studio.title = config.title.clone().unwrap_or(String::new());
-    studio.desc = config.desc.clone().unwrap_or(String::new());
-    studio.tag = config.tag.join(",");
+    studio.title = config.title.clone().unwrap_or(studio.title);
+    studio.desc = config.desc.clone().unwrap_or(studio.desc);
+    studio.tag = match &config.tag {
+        Some(tag) => tag.join(","),
+        None => studio.tag
+    };
     studio.videos =  construct_videos_list(&config.videos);
 
     studio
