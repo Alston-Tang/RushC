@@ -21,6 +21,11 @@ use tracing_subscriber::util::SubscriberInitExt;
 enum Line {
     Qn,
     Bda2,
+    Ws, 
+    Bldsa,
+    Tx, 
+    Txa, 
+    Bda
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,6 +61,11 @@ async fn upload_video(
     let line = match line {
         Line::Qn => line::qn(),
         Line::Bda2 => line::bda2(),
+        Line::Ws => line::ws(),
+        Line::Bldsa => line::bldsa(),
+        Line::Tx => line::tx(),
+        Line::Txa => line::txa(),
+        Line::Bda => line::bda()
     };
     info!("using upload line {:?}", line);
     info!("opening video file {}", file.display());
