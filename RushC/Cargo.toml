@@ -28,3 +28,7 @@ path = "src/upload.rs"
 [[bin]]
 name = "submit"
 path = "src/submit.rs"
+
+[[bin]]
+name = "show"
+path = "src/show.rs"
