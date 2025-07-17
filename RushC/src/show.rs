@@ -29,9 +29,9 @@ struct Opts {
 
 
 async fn show(config: &ShowConfig) -> Result<Value, Error> {
-    let bilibili = login_by_cookies(&config.cookie).await?;
+    let bilibili = login_by_cookies(&config.cookie, None).await?;
     let vid = Vid::Bvid(config.vid.clone());
-    let video_info = bilibili.video_data(&vid).await?;
+    let video_info = bilibili.video_data(&vid, None).await?;
 
     Ok(video_info)
 }

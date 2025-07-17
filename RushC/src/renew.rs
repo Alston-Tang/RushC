@@ -15,7 +15,7 @@ struct Opts {
 
 async fn renew(config: PathBuf) -> Result<(), Error> {
     info!("Attempting to renew credentials...");
-    let bili = login_by_cookies(&config).await?;
+    let bili = login_by_cookies(&config, None).await?;
     let info = bili.my_info().await?;
     info!("Cookie for user {} refreshed", info["data"]["name"]);
     Ok(())

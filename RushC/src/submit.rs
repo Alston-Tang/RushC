@@ -64,7 +64,7 @@ async fn build_archive_studio(
     let mut studio = match &config.vid {
         Some(vid) => {
             info!("vid {} provided. get existing studio from remote", vid);
-            bili.studio_data(&Vid::Bvid(vid.clone())).await.unwrap()
+            bili.studio_data(&Vid::Bvid(vid.clone()), None).await.unwrap()
         },
         None => {
             info!("create a default Studio struct");
@@ -93,6 +93,7 @@ async fn build_archive_studio(
                 up_selection_reply: false,
                 up_close_reply: false,
                 up_close_danmu: false,
+                extra_fields: None
             }
         }
     };
@@ -185,7 +186,7 @@ fn parse_edit_response(res: serde_json::Value) -> SubmitResponse {
 
 async fn submit(config: SubmitConfig) -> SubmitResponse {
     info!("get user credential from cookie file");
-    let bili = login_by_cookies(&config.cookie).await.unwrap();
+    let bili = login_by_cookies(&config.cookie, None).await.unwrap();
     info!(
         "user: {}",
         bili.my_info().await.unwrap()["data"]["name"]
@@ -197,13 +198,13 @@ async fn submit(config: SubmitConfig) -> SubmitResponse {
     match config.vid {
         Some(vid) => {
             info!("editing existing archive {}", vid);
-            let res = bili.edit(&studio).await.unwrap();
+            let res = bili.edit(&studio, None).await.unwrap();
             info!("{:?}", res);
             parse_edit_response(res)
         },
         None => {
             info!("adding a new archive");
-            let res = bili.submit(&studio).await.unwrap();
+            let res = bili.submit(&studio, None).await.unwrap();
             info!("{:?}", res);
             parse_submit_response(res)
         }

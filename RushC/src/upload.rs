@@ -51,7 +51,7 @@ async fn upload_video(
     limit: usize,
 ) -> Option<bilibili::Video> {
     info!("get user credential from cookie file");
-    let bili = login_by_cookies(cookie).await.unwrap();
+    let bili = login_by_cookies(cookie, None).await.unwrap();
     info!(
         "user: {}",
         bili.my_info().await.unwrap()["data"]["name"]
